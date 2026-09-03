@@ -1,0 +1,61 @@
+# Production stack. Run with:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Uses the same .env file as docker-compose.yml — set real production
+# secrets there before running this (see .env.example).
+#
+# NOTE: `backend` here is still the dev config (--reload, source bind-mount)
+# — that gets hardened in the next pass. `frontend` is the real change in
+# this file: a compiled static build served by nginx instead of the Vite
+# dev server.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - reflex_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # No exposed host port — only `backend` needs to reach Postgres,
+    # and it does so over the compose network, not localhost.
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        # Build-time only — see the comment in Dockerfile.prod on why this
+        # can't be a runtime `environment:` entry like the backend's vars.
+        VITE_API_URL: ${VITE_API_URL}
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  reflex_db_data:

@@ -1,0 +1,29 @@
+# Production build — replaces the Vite dev server with a compiled,
+# minified static bundle served by nginx. The dev Dockerfile (used by
+# docker-compose.yml) is untouched, so local dev is unaffected.
+
+# --- Build stage ---
+FROM node:20-alpine AS build
+WORKDIR /app
+
+COPY package.json .
+RUN npm install
+
+COPY . .
+
+# IMPORTANT: Vite inlines VITE_* variables into the compiled JS at build
+# time, unlike the backend which reads env vars at container runtime. This
+# must be passed as a build ARG (see docker-compose.prod.yml), not as a
+# runtime `environment:` entry — setting it on the running container does
+# nothing once the bundle is already built.
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
+
+RUN npm run build
+
+# --- Serve stage ---
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
