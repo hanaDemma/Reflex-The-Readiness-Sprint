@@ -40,7 +40,10 @@ def register(
     db.commit()
     db.refresh(user)
 
-    token = create_access_token(user)
+    token = create_access_token({
+    "sub": str(user.id),
+    "role": user.role.value,
+})
 
     return TokenOut(
         access_token=token,
@@ -48,35 +51,44 @@ def register(
         name=user.name
     )
 
-
 @router.post("/login", response_model=TokenOut)
 def login(
     payload: LoginIn,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(
-        User.phone == payload.phone
-    ).first()
+    user = (
+        db.query(User)
+        .filter(User.phone == payload.phone)
+        .first()
+    )
 
-    if not user or not verify_password(
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid phone or password",
+        )
+
+    if not verify_password(
         payload.password,
-        user.password_hash
+        user.password_hash,
     ):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid phone or password"
+            status_code=401,
+            detail="Invalid phone or password",
         )
 
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is deactivated"
+            status_code=403,
+            detail="User account is inactive",
         )
 
-    token = create_access_token(user)
+    token = create_access_token({
+        "sub": str(user.id),
+        "role": user.role.value,
+    })
 
     return TokenOut(
         access_token=token,
-        role=user.role,
-        name=user.name
+        token_type="bearer",
     )
