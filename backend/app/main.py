@@ -7,7 +7,8 @@ from app.database import Base, engine, SessionLocal
 from app.routers import auth, deliveries, users, roles
 from app.websocket_manager import manager
 from app.auth import decode_token
-from app.seed import ensure_builtin_roles
+# from app.seed import ensure_builtin_roles
+from app.seed import ensure_builtin_roles, run
 
 app = FastAPI(title="Reflex API")
 
