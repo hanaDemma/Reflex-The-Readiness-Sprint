@@ -90,5 +90,7 @@ def login(
 
     return TokenOut(
         access_token=token,
-        token_type="bearer",
+        token_type="bearer"
+        role=user.role,
+        name=user.name
     )
