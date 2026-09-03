@@ -36,18 +36,10 @@ app.include_router(roles.router)
 
 @app.on_event("startup")
 def on_startup():
-    # Using create_all() instead of Alembic migrations for sprint speed.
-    # Fine for a pilot; a real rollout needs versioned migrations.
     Base.metadata.create_all(bind=engine)
 
-    # The four builtin roles are structural (users.role_name FKs to them),
-    # so they're ensured here on every boot — not left to the optional
-    # demo-data seed script.
-    db = SessionLocal()
-    try:
-        ensure_builtin_roles(db)
-    finally:
-        db.close()
+    # Create the required builtin roles and demo users
+    run()
 
 
 @app.get("/health")
