@@ -1,0 +1,64 @@
+# Render Blueprint. Deploy via: Render dashboard → New → Blueprint →
+# point at this repo. Render reads this file and provisions all three
+# services below in one pass.
+#
+# IMPORTANT — two-pass deploy required:
+# Render only assigns each service's public *.onrender.com URL after its
+# first deploy. ALLOWED_ORIGINS (backend) and VITE_API_URL (frontend) each
+# need the *other* service's URL, which doesn't exist yet on a first run.
+# So: deploy once with the placeholder values below, copy the two real
+# URLs Render gives you, paste them into each service's env vars in the
+# dashboard, then trigger a manual redeploy of both. This is a one-time
+# step, not something you'll hit again on future deploys.
+
+databases:
+  - name: reflex-db
+    databaseName: reflex
+    user: reflex
+    plan: free  # Render's free Postgres is deleted after 90 days — fine for
+                # a demo/pilot, upgrade to a paid plan before real usage.
+
+services:
+  - type: web
+    name: reflex-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free  # free web services spin down after ~15min idle and take
+                # 30-60s to wake on the next request — the first request
+                # after idle (e.g. opening the demo cold) will feel slow.
+                # Upgrade to a paid instance before a live panel demo if
+                # that cold-start delay is a risk.
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reflex-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true  # Render generates and stores a real random
+                              # secret itself — never put a real one in
+                              # this committed file.
+      - key: ALLOWED_ORIGINS
+        value: https://reflex-frontend.onrender.com  # placeholder — replace
+                                                       # with your real
+                                                       # frontend URL after
+                                                       # first deploy
+
+  - type: web
+    name: reflex-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://reflex-backend.onrender.com  # placeholder — replace
+                                                      # with your real
+                                                      # backend URL after
+                                                      # first deploy
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
