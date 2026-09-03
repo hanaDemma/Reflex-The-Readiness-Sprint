@@ -1,10 +1,11 @@
+import token
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User
 from app.schemas import RegisterIn, LoginIn, TokenOut
-from app.auth import hash_password, verify_password, create_access_token
 from app.auth import (
     hash_password,
     verify_password,
@@ -50,7 +51,6 @@ def register(
         role=user.role,
         name=user.name
     )
-
 @router.post("/login", response_model=TokenOut)
 def login(
     payload: LoginIn,
@@ -91,4 +91,6 @@ def login(
     return TokenOut(
         access_token=token,
         token_type="bearer",
+        role=user.role,
+        name=user.name,
     )
