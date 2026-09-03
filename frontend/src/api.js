@@ -73,6 +73,9 @@ export const api = {
   listUsers: () => request("/users"),
   createUser: (payload) => request("/users", { method: "POST", body: payload }),
   updateUser: (id, payload) => request(`/users/${id}`, { method: "PATCH", body: payload }),
+
+  listRoles: () => request("/roles"),
+  createRole: (payload) => request("/roles", { method: "POST", body: payload }),
 };
 
 export function wsUrl() {

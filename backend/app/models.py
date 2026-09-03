@@ -22,6 +22,24 @@ class Role(str, enum.Enum):
     rider = "rider"
 
 
+class RoleDefinition(Base):
+    """
+    A catalog of assignable, admin-defined roles. `base_permission` maps
+    each entry onto one of the four fixed permission tiers above — those
+    tiers are what every `require_role()` check and frontend page actually
+    key off. This table lets an admin add new named roles (e.g. "Warehouse
+    Manager") without touching auth: the new role just inherits the
+    permissions/page of whichever tier it's mapped to.
+    """
+    __tablename__ = "roles"
+
+    name = Column(String, primary_key=True)
+    label = Column(String, nullable=False)
+    base_permission = Column(SAEnum(Role), nullable=False)
+    is_builtin = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class RequestStatus(str, enum.Enum):
     open = "Open"
     assigned = "Assigned"
@@ -43,6 +61,7 @@ class User(Base):
     phone = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     role = Column(SAEnum(Role), nullable=False)
+    role_name = Column(String, ForeignKey("roles.name"), nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Dashboard from "./Dashboard";
 import UserManagement from "./UserManagement";
+import RoleManagement from "./RoleManagement";
 
 export default function Admin() {
   const [tab, setTab] = useState("dashboard");
@@ -29,11 +30,25 @@ export default function Admin() {
             <span className="nav-icon">♙</span>
             User management
           </button>
+
+          <button
+            className={`admin-nav-item ${tab === "roles" ? "active" : ""}`}
+            onClick={() => setTab("roles")}
+          >
+            <span className="nav-icon">🛡</span>
+            Role
+          </button>
         </nav>
       </aside>
 
       <section className="admin-content">
-        {tab === "dashboard" ? <Dashboard /> : <UserManagement />}
+        {tab === "dashboard" ? (
+          <Dashboard />
+        ) : tab === "users" ? (
+          <UserManagement />
+        ) : (
+          <RoleManagement />
+        )}
       </section>
     </div>
   );

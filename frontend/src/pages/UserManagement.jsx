@@ -1,24 +1,16 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
-const ROLES = ["admin", "retailer_staff", "dispatcher", "rider"];
-
-const ROLE_LABELS = {
-  admin: "Admin",
-  retailer_staff: "Retailer staff",
-  dispatcher: "Dispatcher",
-  rider: "Rider",
-};
-
 const EMPTY_FORM = {
   name: "",
   phone: "",
   password: "",
-  role: "retailer_staff",
+  role_name: "",
 };
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [error, setError] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
@@ -28,8 +20,10 @@ export default function UserManagement() {
   async function refresh() {
     try {
       setLoading(true);
-      const data = await api.listUsers();
-      setUsers(data);
+      const [userData, roleData] = await Promise.all([api.listUsers(), api.listRoles()]);
+      setUsers(userData);
+      setRoles(roleData);
+      setForm((f) => (f.role_name ? f : { ...f, role_name: roleData[0]?.name || "" }));
     } catch (e) {
       setError(e.message || "Unable to load users.");
     } finally {
@@ -48,7 +42,7 @@ export default function UserManagement() {
 
     try {
       await api.createUser(form);
-      setForm(EMPTY_FORM);
+      setForm((f) => ({ ...EMPTY_FORM, role_name: f.role_name }));
       await refresh();
     } catch (e) {
       setError(e.message || "Unable to create the user.");
@@ -71,12 +65,12 @@ export default function UserManagement() {
     }
   }
 
-  async function changeRole(user, role) {
+  async function changeRole(user, roleName) {
     setError("");
     setUpdatingId(user.id);
 
     try {
-      await api.updateUser(user.id, { role });
+      await api.updateUser(user.id, { role_name: roleName });
       await refresh();
     } catch (e) {
       setError(e.message || "Unable to update user role.");
@@ -136,12 +130,12 @@ export default function UserManagement() {
             <label htmlFor="user-role">Role</label>
             <select
               id="user-role"
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
+              value={form.role_name}
+              onChange={(e) => setForm({ ...form, role_name: e.target.value })}
             >
-              {ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {ROLE_LABELS[role]}
+              {roles.map((role) => (
+                <option key={role.name} value={role.name}>
+                  {role.label}
                 </option>
               ))}
             </select>
@@ -197,13 +191,13 @@ export default function UserManagement() {
                       <td>
                         <select
                           className="role-select"
-                          value={user.role}
+                          value={user.role_name}
                           disabled={isUpdating}
                           onChange={(e) => changeRole(user, e.target.value)}
                         >
-                          {ROLES.map((role) => (
-                            <option key={role} value={role}>
-                              {ROLE_LABELS[role]}
+                          {roles.map((role) => (
+                            <option key={role.name} value={role.name}>
+                              {role.label}
                             </option>
                           ))}
                         </select>

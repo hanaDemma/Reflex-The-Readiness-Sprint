@@ -78,6 +78,25 @@ class RiderOut(BaseModel):
         from_attributes = True
 
 
+# ---- Admin: role catalog ----
+
+class RoleOut(BaseModel):
+    name: str
+    label: str
+    base_permission: Role
+    is_builtin: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class RoleCreateIn(BaseModel):
+    name: str
+    label: str
+    base_permission: Role
+
+
 # ---- Admin: user management ----
 
 class UserOut(BaseModel):
@@ -85,6 +104,7 @@ class UserOut(BaseModel):
     name: str
     phone: str
     role: Role
+    role_name: str
     is_active: bool
     created_at: datetime
 
@@ -96,11 +116,11 @@ class UserCreateIn(BaseModel):
     name: str
     phone: str
     password: str
-    role: Role
+    role_name: str
 
 
 class UserUpdateIn(BaseModel):
-    role: Optional[Role] = None
+    role_name: Optional[str] = None
     is_active: Optional[bool] = None
 
 
