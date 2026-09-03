@@ -1,42 +1,55 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from datetime import datetime, timedelta, timezone
+import os
 
-from app.database import get_db
+from passlib.context import CryptContext
+from jose import jwt
+
 from app.models import User
-from app.schemas import RegisterIn, LoginIn, TokenOut
-from app.auth import hash_password, verify_password, create_access_token
-
-router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=TokenOut)
-def register(payload: RegisterIn, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.phone == payload.phone).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Phone already registered")
+# Password hashing
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto"
+)
 
-    user = User(
-        name=payload.name,
-        phone=payload.phone,
-        password_hash=hash_password(payload.password),
-        role=payload.role,
-        role_name=payload.role.value,
+
+# JWT configuration
+SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret-key")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
+)
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(
+    plain_password: str,
+    hashed_password: str
+) -> bool:
+    return pwd_context.verify(
+        plain_password,
+        hashed_password
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    token = create_access_token(user)
-    return TokenOut(access_token=token, role=user.role, name=user.name)
 
 
-@router.post("/login", response_model=TokenOut)
-def login(payload: LoginIn, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.phone == payload.phone).first()
-    if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid phone or password")
-    if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
+def create_access_token(user: User) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+    )
 
-    token = create_access_token(user)
-    return TokenOut(access_token=token, role=user.role, name=user.name)
+    payload = {
+        "sub": str(user.id),
+        "phone": user.phone,
+        "role": user.role.value if hasattr(user.role, "value") else str(user.role),
+        "exp": expire,
+    }
+
+    return jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
